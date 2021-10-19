@@ -72,10 +72,9 @@ def getVariables(x, subcats):
     return retval
 
 def getVideo(x):
-  if 'links' in x and len(x['links']) > 0:
-    return x['links'][0]['uri']
-  else:
-    return None
+  if x and 'links' in x and len(x['links']) > 0:
+      return x['links'][0]['uri']
+  return None
     
 if len(sys.argv) != 3:
   print(sys.argv[0] + ": export your SRC PBs to a csv file")
