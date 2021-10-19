@@ -7,10 +7,12 @@ import sys
 def getUserId(username):
   url = "https://www.speedrun.com/api/v1/users?name=" + username
   data = requests.get(url).json()['data']
-  if len(data) == 1:
-    return data[0]['id']
-  else:
-    raise Exception('Searched for ' + username + ', got back ' + str(len(data)) + ' entries (expected 1)') 
+  if len(data) > 0:
+    for u in data:
+      if u['names']['international'] == username:
+        return u['id']
+  print(data)
+  raise Exception('Searched for ' + username + ', got back ' + str(len(data)) + ' entries (expected 1)') 
 
 def getPBs(userid):
   url = "https://www.speedrun.com/api/v1/users/" + userid + "/personal-bests?embed=game,category,region,platform,players"
