@@ -33,7 +33,13 @@ def getPBs(userid, all = False):
 def getPlayers(x):
   players = []
   for p in x.players['data']:
-    players.append(p['names']['international']) 
+    if 'name' in p:
+      players.append(p['name'])
+    elif 'names' in p:
+      players.append(p['names']['international'])
+    else:
+      print(p)
+      raise Exception("Encountered unusual player field.")
   return ", ".join(players)
 
 def getRegion(x):
