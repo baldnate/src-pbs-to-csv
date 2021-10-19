@@ -58,6 +58,12 @@ def getVariables(x, subcats):
       retval = " -- ".join(variables)
     return retval
 
+def getVideo(x):
+  if 'links' in x and len(x['links']) > 0:
+    return x['links'][0]['uri']
+  else:
+    return None
+    
 if len(sys.argv) != 3:
   print(sys.argv[0] + ": export your SRC PBs to a csv file")
   print()
@@ -81,7 +87,7 @@ runsdf['regionname'] = rawdf.apply(lambda x: getRegion(x), axis=1)
 runsdf['players'] = rawdf.apply(lambda x: getPlayers(x), axis=1)
 runsdf['time'] = rawdf.apply(lambda x: x.run['times']['primary_t'], axis=1)
 runsdf['date'] = rawdf.apply(lambda x: x.run['date'], axis=1)
-runsdf['video'] = rawdf.apply(lambda x: x.run['videos']['links'][0]['uri'], axis=1)
+runsdf['video'] = rawdf.apply(lambda x: getVideo(x.run['videos']), axis=1)
 runsdf['comment'] = rawdf.apply(lambda x: str(x.run['comment']).replace('\n', ' ').replace('\r', ' ') , axis=1)
 
 runsdf.to_csv(outfilename, index=False, quoting=csv.QUOTE_NONNUMERIC)
