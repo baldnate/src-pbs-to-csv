@@ -1,5 +1,6 @@
 import csv
 import json
+import math
 import pandas as pd
 import requests
 import sys
@@ -14,10 +15,20 @@ def getUserId(username):
   print(data)
   raise Exception('Searched for ' + username + ', got back ' + str(len(data)) + ' entries (expected 1)') 
 
-def getPBs(userid):
+def getPBs(userid, all = False):
   url = "https://www.speedrun.com/api/v1/users/" + userid + "/personal-bests?embed=game,category,region,platform,players"
   data = requests.get(url).json()['data']
-  return data
+  pbdf = pd.DataFrame(data)
+  pbdf = pbdf.join(pbdf['run'].apply(pd.Series), rsuffix='run')
+  pbdf.drop(axis=1, columns=['run'], inplace=True)
+  if all:
+    allurl = "https://www.speedrun.com/api/v1/runs?user=" + userid + "&embed=game,category,region,platform,players"
+    data = requests.get(allurl).json()['data']
+    alldf = pd.DataFrame(data)
+    alldf['place'] = math.nan
+    pbdf = pbdf.append(alldf)
+    return pbdf
+  return pbdf
 
 def getPlayers(x):
   players = []
@@ -50,11 +61,11 @@ def getValue(variableid, valueid):
   return var['values']['values'][valueid]['label']
 
 def getVariables(x, subcats):
-  if x.run['values'] == {}:
+  if x['values'] == {}:
     return None
   else:
     variables = []
-    for varid, valid in x.run['values'].items():
+    for varid, valid in x['values'].items():
       if getVariable(varid)['is-subcategory'] == subcats:
         variables.append(getValue(varid, valid))  
       retval = " -- ".join(variables)
@@ -75,8 +86,7 @@ if len(sys.argv) != 3:
 username = sys.argv[1]
 outfilename = sys.argv[2]
 userid = getUserId(username)
-pbs = getPBs(userid)
-rawdf = pd.DataFrame(pbs)
+rawdf = getPBs(userid, all=True)
 
 runsdf = pd.DataFrame()
 runsdf['place'] = rawdf['place']
@@ -87,10 +97,10 @@ runsdf['variable(s)'] = rawdf.apply(lambda x: getVariables(x, False), axis=1)
 runsdf['platformname'] = rawdf.apply(lambda x: getPlatform(x), axis=1)
 runsdf['regionname'] = rawdf.apply(lambda x: getRegion(x), axis=1)
 runsdf['players'] = rawdf.apply(lambda x: getPlayers(x), axis=1)
-runsdf['time'] = rawdf.apply(lambda x: x.run['times']['primary_t'], axis=1)
-runsdf['date'] = rawdf.apply(lambda x: x.run['date'], axis=1)
-runsdf['video'] = rawdf.apply(lambda x: getVideo(x.run['videos']), axis=1)
-runsdf['comment'] = rawdf.apply(lambda x: str(x.run['comment']).replace('\n', ' ').replace('\r', ' ') , axis=1)
+runsdf['time'] = rawdf.apply(lambda x: x['times']['primary_t'], axis=1)
+runsdf['date'] = rawdf.apply(lambda x: x['date'], axis=1)
+runsdf['video'] = rawdf.apply(lambda x: getVideo(x['videos']), axis=1)
+runsdf['comment'] = rawdf.apply(lambda x: str(x['comment']).replace('\n', ' ').replace('\r', ' ') , axis=1)
 
 runsdf.to_csv(outfilename, index=False, quoting=csv.QUOTE_NONNUMERIC)
 print(username, "PBs exported to", outfilename)
