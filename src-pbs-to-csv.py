@@ -13,9 +13,15 @@ def getUserId(username):
     raise Exception('Searched for ' + username + ', got back ' + str(len(data)) + ' entries (expected 1)') 
 
 def getPBs(userid):
-  url = "https://www.speedrun.com/api/v1/users/" + userid + "/personal-bests?embed=game,category,region,platform"
+  url = "https://www.speedrun.com/api/v1/users/" + userid + "/personal-bests?embed=game,category,region,platform,players"
   data = requests.get(url).json()['data']
   return data
+
+def getPlayers(x):
+  players = []
+  for p in x.players['data']:
+    players.append(p['names']['international']) 
+  return ", ".join(players)
 
 def getRegion(x):
   if x.region['data'] == []:
@@ -72,6 +78,7 @@ runsdf['subcategory(s)'] = rawdf.apply(lambda x: getVariables(x, True), axis=1)
 runsdf['variable(s)'] = rawdf.apply(lambda x: getVariables(x, False), axis=1)
 runsdf['platformname'] = rawdf.apply(lambda x: getPlatform(x), axis=1)
 runsdf['regionname'] = rawdf.apply(lambda x: getRegion(x), axis=1)
+runsdf['players'] = rawdf.apply(lambda x: getPlayers(x), axis=1)
 runsdf['time'] = rawdf.apply(lambda x: x.run['times']['primary_t'], axis=1)
 runsdf['date'] = rawdf.apply(lambda x: x.run['date'], axis=1)
 runsdf['video'] = rawdf.apply(lambda x: x.run['videos']['links'][0]['uri'], axis=1)
