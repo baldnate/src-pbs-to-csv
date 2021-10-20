@@ -10,7 +10,7 @@ def getUserId(username):
   data = requests.get(url).json()['data']
   if len(data) > 0:
     for u in data:
-      if u['names']['international'] == username:
+      if u['names']['international'].lower() == username.lower():
         return u['id']
   print(data)
   raise Exception('Searched for ' + username + ', got back ' + str(len(data)) + ' entries (expected 1)') 
@@ -27,6 +27,7 @@ def getAllRuns(userid):
   url = "https://www.speedrun.com/api/v1/runs?user=" + userid + "&embed=game,category,region,platform,players"
   alldf = pd.DataFrame()
   while url != None:
+    print(".", end ="")
     response = requests.get(url).json()
     data = response['data']
     df = pd.DataFrame(data)
@@ -35,6 +36,8 @@ def getAllRuns(userid):
       df.set_index('id', inplace=True)
       alldf = alldf.append(df)
     url = getNextUri(response)
+    alldf['place'] = math.nan
+  print()
   return alldf
 
 def getPBs(userid, all = False):
@@ -46,7 +49,6 @@ def getPBs(userid, all = False):
   pbdf.drop(axis=1, columns=['run'], inplace=True)
   if all:
     alldf = getAllRuns(userid)
-    alldf['place'] = math.nan
     pbdf = pbdf.append(alldf)
     return pbdf
   return pbdf
@@ -99,9 +101,8 @@ def getVariables(x, subcats):
     return retval
 
 def getVideo(x):
-  if x and 'links' in x and len(x['links']) > 0:
-      return x['links'][0]['uri']
-  return None
+  vids = [y['uri'] for y in x['links']]
+  return " | ".join(vids)
     
 if len(sys.argv) != 3:
   print(sys.argv[0] + ": export your SRC PBs to a csv file")
@@ -111,9 +112,11 @@ if len(sys.argv) != 3:
 
 username = sys.argv[1]
 outfilename = sys.argv[2]
+print('Retrieving runs for', username)
 userid = getUserId(username)
 rawdf = getPBs(userid, all=True)
 
+print('Processing data...')
 runsdf = pd.DataFrame()
 runsdf['place'] = rawdf['place']
 runsdf['game'] = rawdf.apply(lambda x: x.game['data']['names']['international'], axis=1)
