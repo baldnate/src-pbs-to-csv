@@ -15,16 +15,37 @@ def getUserId(username):
   print(data)
   raise Exception('Searched for ' + username + ', got back ' + str(len(data)) + ' entries (expected 1)') 
 
+def getNextUri(response):
+  if 'pagination' in response:
+    if 'links' in response['pagination']:
+      for x in response['pagination']['links']:
+        if x['rel'] == 'next':
+          return x['uri']
+  return None
+
+def getAllRuns(userid):
+  url = "https://www.speedrun.com/api/v1/runs?user=" + userid + "&embed=game,category,region,platform,players"
+  alldf = pd.DataFrame()
+  while url != None:
+    response = requests.get(url).json()
+    data = response['data']
+    df = pd.DataFrame(data)
+    if df.shape[0] > 0:
+      df['place'] = math.nan
+      df.set_index('id', inplace=True)
+      alldf = alldf.append(df)
+    url = getNextUri(response)
+  return alldf
+
 def getPBs(userid, all = False):
   url = "https://www.speedrun.com/api/v1/users/" + userid + "/personal-bests?embed=game,category,region,platform,players"
   data = requests.get(url).json()['data']
   pbdf = pd.DataFrame(data)
   pbdf = pbdf.join(pbdf['run'].apply(pd.Series), rsuffix='run')
+  pbdf.set_index('id', inplace=True)
   pbdf.drop(axis=1, columns=['run'], inplace=True)
   if all:
-    allurl = "https://www.speedrun.com/api/v1/runs?user=" + userid + "&embed=game,category,region,platform,players"
-    data = requests.get(allurl).json()['data']
-    alldf = pd.DataFrame(data)
+    alldf = getAllRuns(userid)
     alldf['place'] = math.nan
     pbdf = pbdf.append(alldf)
     return pbdf
@@ -107,6 +128,7 @@ runsdf['date'] = rawdf.apply(lambda x: x['date'], axis=1)
 runsdf['video'] = rawdf.apply(lambda x: getVideo(x['videos']), axis=1)
 runsdf['comment'] = rawdf.apply(lambda x: str(x['comment']).replace('\n', ' ').replace('\r', ' ') , axis=1)
 
+runsdf.drop_duplicates(subset=['game','category','subcategory(s)','variable(s)','platformname','regionname','players','time','date','video','comment'], keep="first", inplace=True)
+
 runsdf.to_csv(outfilename, index=False, quoting=csv.QUOTE_NONNUMERIC)
 print(username, "PBs exported to", outfilename)
-
